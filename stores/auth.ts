@@ -1,36 +1,110 @@
-import { defineStore } from 'pinia';
+import { jwtDecode } from 'jwt-decode'
+
+interface AuthState {
+	user: User | null;
+	token: string | null;
+	refreshToken: string | null;
+}
+
+interface User {
+	id: number;
+	username: string;
+	email: string;
+}
+
+interface TokenResponse {
+	refresh: string;
+	access: string;
+}
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    token: null as string | null,
-  }),
-  getters: {
-    isAuthenticated: (state) => !!state.token,
+  state: (): AuthState => {
+		return {
+			user: null,
+			token: null,
+			refreshToken: null
+		}
   },
+  getters: {
+		getTokenExpiration: (state): number | null => {
+			if (!state.token || !state.refreshToken) {
+				return null;
+			}
+		
+			try {
+				const decodedToken: any = jwtDecode(state.token);
+				return decodedToken.exp;
+			} catch (error) {
+				console.error('Failed to decode token:', error);
+			}
+			return null;
+		}
+	},
   actions: {
-    login(username: string, password: string) {
-      // Simulate an API call to login
-      return new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (username && password) { // Simplified check
-            this.token = 'fake-token'; // Simulate returned token
-            localStorage.setItem('token', this.token);
-            resolve(this.token);
-          } else {
-            reject('Invalid credentials');
-          }
-        }, 1000);
-      });
+    async login(username: string, password: string) {
+			try {
+				const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ username, password }),
+				});
+
+				if (response.ok) {
+					const tokenResponse: TokenResponse = await response.json();
+
+					const authStore = useAuthStore();
+					authStore.token = tokenResponse.access;
+					authStore.refreshToken = tokenResponse.refresh;
+
+					localStorage.setItem('token', tokenResponse.access);
+					localStorage.setItem('refreshToken', tokenResponse.refresh);
+
+					await authStore.fetchUser();
+				} else {
+					console.error('Login failed:', response.status);
+				}
+			} catch (error) {
+				console.error('Login failed:', error);
+			}
+    },
+		async fetchUser() {
+			try {
+				const response = await fetch('http://localhost:8000/api/v1/auth/user', {
+					method: 'GET',
+					headers: {
+						'Authorization': `Bearer ${this.token}`,
+					},
+				});
+
+				if (response.ok) {
+					const user: User = await response.json();
+					this.user = user;
+					localStorage.setItem('user', JSON.stringify(user));
+				} else {
+					console.error('Failed to fetch user:', response.status);
+				}
+			} catch (error) {
+				console.error('Failed to fetch user:', error);
+			}
+		},
+    initializeStore() {
+      this.token = localStorage.getItem('token');
+			this.refreshToken = localStorage.getItem('refreshToken');
+      if (this.getTokenExpiration && this.getTokenExpiration > Date.now() / 1000 && this.refreshToken) {
+				this.fetchUser();
+      } else {
+				this.logout();
+			}
     },
     logout() {
+			this.user = null;
+			localStorage.removeItem('user');
       this.token = null;
       localStorage.removeItem('token');
-    },
-    initializeStore() {
-      const token = localStorage.getItem('token');
-      if (token) {
-        this.token = token;
-      }
+			this.refreshToken = null;
+			localStorage.removeItem('refreshToken');
     },
   }
 });

@@ -21,7 +21,6 @@ const authStore = useAuthStore();
 
 const login = async () => {
   try {
-		console.log('username, password', username.value, password.value);
     await authStore.login(username.value, password.value);
     router.push('/fv');
   } catch (error) {
