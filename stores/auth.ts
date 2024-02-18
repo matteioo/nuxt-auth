@@ -43,7 +43,7 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(username: string, password: string) {
 			try {
-				const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+				const response = await fetch('/api/auth/login', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -69,7 +69,7 @@ export const useAuthStore = defineStore('auth', {
 		async fetchUser() {
 			if (typeof window === 'undefined') return
 			try {
-				const response = await fetch('http://localhost:8000/api/v1/auth/user', {
+				const response = await fetch('/api/auth/user', {
 					method: 'GET',
 					headers: {
 						'Authorization': `Bearer ${this.token}`,
