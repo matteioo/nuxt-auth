@@ -58,9 +58,6 @@ export const useAuthStore = defineStore('auth', {
 					authStore.token = tokenResponse.access;
 					authStore.refreshToken = tokenResponse.refresh;
 
-					localStorage.setItem('token', tokenResponse.access);
-					localStorage.setItem('refreshToken', tokenResponse.refresh);
-
 					await authStore.fetchUser();
 				} else {
 					console.error('Login failed:', response.status);
@@ -70,6 +67,7 @@ export const useAuthStore = defineStore('auth', {
 			}
     },
 		async fetchUser() {
+			if (typeof window === 'undefined') return
 			try {
 				const response = await fetch('http://localhost:8000/api/v1/auth/user', {
 					method: 'GET',
@@ -81,7 +79,6 @@ export const useAuthStore = defineStore('auth', {
 				if (response.ok) {
 					const user: User = await response.json();
 					this.user = user;
-					localStorage.setItem('user', JSON.stringify(user));
 				} else {
 					console.error('Failed to fetch user:', response.status);
 				}
@@ -89,22 +86,17 @@ export const useAuthStore = defineStore('auth', {
 				console.error('Failed to fetch user:', error);
 			}
 		},
-    initializeStore() {
-      this.token = localStorage.getItem('token');
-			this.refreshToken = localStorage.getItem('refreshToken');
+    async initializeStore() {
       if (this.getTokenExpiration && this.getTokenExpiration > Date.now() / 1000 && this.refreshToken) {
-				this.fetchUser();
+				await this.fetchUser();
       } else {
 				this.logout();
 			}
     },
     logout() {
 			this.user = null;
-			localStorage.removeItem('user');
       this.token = null;
-      localStorage.removeItem('token');
 			this.refreshToken = null;
-			localStorage.removeItem('refreshToken');
     },
   }
 });
