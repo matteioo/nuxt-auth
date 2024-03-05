@@ -1,9 +1,6 @@
 <template>
   <div>
-    <h1>Default index Page</h1>
-		<NuxtLink to="/login">Login</NuxtLink>
+    <h1 class="text-xl">This is the search page</h1>
+    <RouterLink to="/login">Go to Login</RouterLink>
   </div>
 </template>
-
-<script setup>
-</script>
